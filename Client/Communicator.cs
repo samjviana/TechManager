@@ -17,8 +17,8 @@ namespace ResourceMonitor.Client {
         private bool isRunning;
         private DataCollector dataCollector;
         private bool firstRun = true;
-        //private string server = "http://localhost:9001";
-        private string server = "http://52.67.242.62:9001";
+        private string server = "http://localhost:9001";
+        //private string server = "http://52.67.242.62:9001";
 
         public Communicator(DataCollector dataCollector) {
             this.dataCollector = dataCollector;

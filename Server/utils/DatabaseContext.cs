@@ -21,10 +21,17 @@ namespace ResourceMonitorLib.utils {
         public DbSet<SuperIO> superio { get; set; }
         public DbSet<Readings> readings { get; set; }
         public DbSet<User> user { get; set; }
-
-
-        public DatabaseContext() : base("ResourceMonitorDB") {
+        public DbSet<models.OperatingSystem> operatingsystem { get; set; }
+        public DbSet<InstalledSoftware> installedsoftware { get; set; }
+        public DbSet<Smartphone> smartphone { get; set; }
+        public DbSet<models.smartphone.SPProcessor> smartphoneprocessor { get; set; }
+        public DbSet<models.smartphone.SPRAM> smartphoneram { get; set; }
+        public DbSet<models.smartphone.SPOperatingSystem> smartphoneos { get; set; }
+        public DbSet<models.smartphone.SPReadings> smartphonereadings { get; set; }
+        
+        public DatabaseContext() : base("TechManagerDB") {
             Database.SetInitializer<DatabaseContext>(new CreateDatabaseIfNotExists<DatabaseContext>());
+            //Database.SetInitializer<DatabaseContext>(new DropCreateDatabaseIfModelChanges<DatabaseContext>());
         }
 
         public override int SaveChanges() {

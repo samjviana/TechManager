@@ -125,12 +125,19 @@
   <ItemGroup>
     <Compile Include="models\Computer.cs" />
     <Compile Include="models\GPU.cs" />
+    <Compile Include="models\InstalledSoftware.cs" />
     <Compile Include="models\Model.cs" />
     <Compile Include="models\Motherboard.cs" />
+    <Compile Include="models\OperatingSystem.cs" />
     <Compile Include="models\PhysicalMemory.cs" />
     <Compile Include="models\Processor.cs" />
     <Compile Include="models\RAM.cs" />
     <Compile Include="models\Readings.cs" />
+    <Compile Include="models\Smartphone.cs" />
+    <Compile Include="models\smartphone\SPOperatingSystem.cs" />
+    <Compile Include="models\smartphone\SPProcessor.cs" />
+    <Compile Include="models\smartphone\SPRAM.cs" />
+    <Compile Include="models\smartphone\SPReadings.cs" />
     <Compile Include="models\Storage.cs" />
     <Compile Include="models\SuperIO.cs" />
     <Compile Include="models\User.cs" />

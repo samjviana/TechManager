@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Win32;
+using Newtonsoft.Json;
 using NvAPIWrapper.GPU;
 using NvAPIWrapper.Native.GPU;
 using ResourceMonitorLib.models;
@@ -101,6 +102,7 @@ namespace ResourceMonitor.Client {
 
         public void Initialize() {
             threads.Add("ComputerThread", new Thread(new ThreadStart(ComputerThreadCallback)));
+            threads.Add("OperatingSystemThread", new Thread(new ThreadStart(OperatingSystemThreadCallback)));
 
             foreach (var thread in threads) {
                 thread.Value.Start();
@@ -350,6 +352,7 @@ namespace ResourceMonitor.Client {
                 computer.status = true;
 
                 Thread computerThread = new Thread(new ThreadStart(ComputerThreadCallback));
+                Thread operatingSystemThread = new Thread(new ThreadStart(OperatingSystemThreadCallback));
                 Thread ohmThread = new Thread(new ThreadStart(OhmThreadCallback));
                 Thread cpuThread = new Thread(new ThreadStart(CpuThreadCallback));
                 Thread ramThread = new Thread(new ThreadStart(RamThreadCallback));
@@ -357,6 +360,7 @@ namespace ResourceMonitor.Client {
                 Thread storageThread = new Thread(new ThreadStart(StorageThreadCallback));
 
                 computerThread.Start();
+                operatingSystemThread.Start();
                 ohmThread.Start();
                 cpuThread.Start();
                 ramThread.Start();
@@ -364,6 +368,7 @@ namespace ResourceMonitor.Client {
                 storageThread.Start();
 
                 computerThread.Join();
+                operatingSystemThread.Join();
                 ohmThread.Join();
                 cpuThread.Join();
                 ramThread.Join();
@@ -405,6 +410,99 @@ namespace ResourceMonitor.Client {
 
                 Thread.Sleep(500);
             }
+        }
+
+        private void OperatingSystemThreadCallback() {
+            var searcher = new ManagementObjectSearcher("SELECT " +
+                "Caption," +
+                "Version," +
+                "BuildNumber," +
+                "Manufacturer," +
+                "OSArchitecture," +
+                "SerialNumber, " +
+                "Status," +
+                "InstallDate," +
+                "MUILanguages," +
+                "CountryCode," +
+                "CodeSet," +
+                "BootDevice," +
+                "SystemDrive," +
+                "WindowsDirectory " +
+                "FROM Win32_OperatingSystem");
+            var managementObjects = searcher.Get();
+
+            computer.operatingsystem = new ResourceMonitorLib.models.OperatingSystem();
+            foreach (var operatingSystem in managementObjects) {
+                computer.operatingsystem.name = operatingSystem.Properties["Caption"].Value.ToString();
+                computer.operatingsystem.version = operatingSystem.Properties["Version"].Value.ToString();
+                computer.operatingsystem.build = operatingSystem.Properties["BuildNumber"].Value.ToString();
+                computer.operatingsystem.manufacturer = operatingSystem.Properties["Manufacturer"].Value.ToString();
+                computer.operatingsystem.architecture = operatingSystem.Properties["OSArchitecture"].Value.ToString();
+                computer.operatingsystem.serialNumber = operatingSystem.Properties["SerialNumber"].Value.ToString();
+                computer.operatingsystem.serialKey = getSerialKey();
+                computer.operatingsystem.status = operatingSystem.Properties["Status"].Value.ToString();
+                computer.operatingsystem.installDate = ManagementDateTimeConverter.ToDateTime(operatingSystem.Properties["InstallDate"].Value.ToString());
+                computer.operatingsystem.language = operatingSystem.Properties["MUILanguages"].Value.ToString();
+                computer.operatingsystem.language = operatingSystem.Properties["CountryCode"].Value.ToString();
+                computer.operatingsystem.codePage = Convert.ToInt32(operatingSystem.Properties["CodeSet"].Value.ToString());
+                computer.operatingsystem.systemPartition = operatingSystem.Properties["SystemDrive"].Value.ToString();
+                computer.operatingsystem.bootDevice = operatingSystem.Properties["BootDevice"].Value.ToString();
+                computer.operatingsystem.installPath = operatingSystem.Properties["WindowsDirectory"].Value.ToString();
+            }
+        }
+
+        private string getSerialKey() {
+            byte[] id = null;
+            var regKey = Registry.LocalMachine.OpenSubKey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
+
+            if (regKey != null) id = regKey.GetValue("DigitalProductId") as byte[];
+
+            //first byte offset
+            const int start = 52;
+            //last byte offset
+            const int end = start + 15;
+            //decoded key length
+            const int length = 29;
+            //decoded key in byte form
+            const int decoded = 15;
+            //char[] for holding the decoded product key
+            var decodedKey = new char[length];
+            //List<byte> to hold the key bytes
+            var keyHex = new List<byte>();
+            //list to hold possible alpha-numeric characters
+            //that may be in the product key
+            var charsInKey = new List<char>() {
+                'B', 'C', 'D', 'F', 'G', 'H',
+                'J', 'K', 'M', 'P', 'Q', 'R',
+                'T', 'V', 'W', 'X', 'Y', '2',
+                '3', '4', '6', '7', '8', '9'
+            };
+
+            //add all bytes to our list
+            for (var i = start; i <= end; i++) {
+                keyHex.Add(id[i]);
+            }
+
+            //now the decoding starts
+            for (var i = length - 1; i >= 0; i--) {
+                switch ((i + 1) % 6) {
+                    //if the calculation is 0 (zero) then add the seperator
+                    case 0:
+                        decodedKey[i] = '-';
+                        break;
+                    default:
+                        var idx = 0;
+                        for (var j = decoded - 1; j >= 0; j--) {
+                            var @value = (idx << 8) | keyHex[j];
+                            keyHex[j] = (byte)(@value / 24);
+                            idx = @value % 24;
+                            decodedKey[i] = charsInKey[idx];
+                        }
+                        break;
+                }
+            }
+
+            return new string(decodedKey);
         }
 
         private void OhmThreadCallback() {
@@ -519,6 +617,7 @@ namespace ResourceMonitor.Client {
                     uint nvmlCurrentPower;
                     NvmlWrapper.nvmlUtilization_t nvmlCurrentUtilization;
                     uint nvmlCurrentLoad;
+                    int gpuIdx = (int)i;
 
                     NvmlWrapper.nvmlReturn_t deviceReturn = NvmlWrapper.Nvml.nvmlDeviceGetHandleByIndex_v2(i, out nvmlDevice);
                     NvmlWrapper.nvmlReturn_t nameReturn = NvmlWrapper.Nvml.nvmlDeviceGetName(nvmlDevice, nvmlName, 64);
@@ -592,7 +691,6 @@ namespace ResourceMonitor.Client {
                         }
                     }
 
-                    int gpuIdx = (int)i;
                     try {
                         var trash = computer.gpus.ElementAt(gpuIdx);
                     }

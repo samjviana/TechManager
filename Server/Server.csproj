@@ -154,6 +154,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="dao\SmartphoneDAO.cs" />
     <Compile Include="dao\ReadingsDAO.cs" />
     <Compile Include="dao\ComputerDAO.cs" />
     <Compile Include="dao\DAO.cs" />

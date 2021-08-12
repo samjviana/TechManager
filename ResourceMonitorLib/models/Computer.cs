@@ -44,7 +44,11 @@ namespace ResourceMonitorLib.models {
         [Required]
         virtual public ICollection<GPU> gpus { get; set; }
         [Required]
+        virtual public ICollection<InstalledSoftware> installedsoftwares { get; set; }
+        [Required]
         virtual public Motherboard motherboard { get; set; }
+        [Required]
+        virtual public OperatingSystem operatingsystem { get; set; }
         public bool status { get; set; }
     }
 }

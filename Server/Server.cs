@@ -20,6 +20,7 @@ using Timer = System.Windows.Forms.Timer;
 using System.ComponentModel;
 using System.Web;
 using System.Security.Cryptography;
+using System.Reflection;
 
 namespace Server {
     class Server {
@@ -194,6 +195,9 @@ namespace Server {
                 if (requestString.StartsWith(DatabaseWrapper.Tables.COMPUTER)) {
                     json = processComputerRequest(keys, body, httpRequest.HttpMethod);
                 }
+                if (requestString.StartsWith(DatabaseWrapper.Tables.SMARTPHONE)) {
+                    json = processSmartphoneRequest(keys, body, httpRequest.HttpMethod);
+                }
                 if (requestString.StartsWith(DatabaseWrapper.Tables.READINGS)) {
                     json = processRequest(new ReadingsDAO(), keys, body, httpRequest.HttpMethod);
                 }
@@ -354,8 +358,8 @@ namespace Server {
                                     var query = string.Format(
                                         "SELECT * FROM resourcemonitor.readings WHERE computer_id = {0} AND date BETWEEN {1} AND {2}",
                                         computer.id,
-                                        string.Format("'{0}'", DateTime.Now.AddMinutes(-1).ToString("MM-dd-yyyy HH:mm:ss.FF")),
-                                        string.Format("'{0}'", DateTime.Now.ToString("MM-dd-yyyy HH:mm:ss.FF"))
+                                        string.Format("'{0}'", DateTime.Now.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:ss.FF")),
+                                        string.Format("'{0}'", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.FF"))
                                     );
                                     readingsList = context.readings.SqlQuery(query).ToList();
                                     json = JsonConvert.SerializeObject(readingsList);
@@ -424,6 +428,10 @@ namespace Server {
                             c => c.motherboard
                         ).Include(
                             c => c.storages
+                        ).Include(
+                            c => c.operatingsystem
+                        ).Include(
+                            c => c.installedsoftwares
                         ).ToList();
 
                         foreach (var computer in computers) {
@@ -477,14 +485,31 @@ namespace Server {
                         ).FirstOrDefault().update = DateTime.Now;*/
 
                         // context.SaveChanges();
-                        Computer __computer = context.computer.Where(
+                        Computer __computer = context.computer.Include(
+                            c => c.gpus
+                        ).Include(
+                            c => c.processors
+                        ).Include(
+                            c => c.ram
+                        ).Include(
+                            c => c.motherboard
+                        ).Include(
+                            c => c.storages
+                        ).Include(
+                            c => c.operatingsystem
+                        ).Include(
+                            c => c.installedsoftwares
+                        ).Where(
                             c => c.uuid == computer.uuid
                         ).FirstOrDefault();
 
+
                         foreach (var propertyInfo in __computer.GetType().GetProperties()) {
-                            if (propertyInfo.Name != "id" && propertyInfo.Name != "uuid" && !propertyInfo.GetGetMethod().IsVirtual) {
-                                var newValue = newComputer.GetType().GetProperty(propertyInfo.Name).GetValue(newComputer);
-                                propertyInfo.SetValue(__computer, newValue);
+                            if (propertyInfo.Name != "id" && propertyInfo.Name != "uuid") {
+                                if (!propertyInfo.GetGetMethod().IsVirtual) {
+                                    var newValue = newComputer.GetType().GetProperty(propertyInfo.Name).GetValue(newComputer);
+                                    propertyInfo.SetValue(__computer, newValue);
+                                }
                             }
                         }
 
@@ -703,7 +728,9 @@ namespace Server {
                 }
                 else {
                     Computer _computer = newComputer;
+                    _computer.installedsoftwares = new List<InstalledSoftware>();
                     _computer.uuid = Guid.NewGuid();
+                    _computer.operatingsystem.uuid = Guid.NewGuid();
                     foreach (var _gpu in _computer.gpus) {
                         _gpu.uuid = Guid.NewGuid();
                     }
@@ -720,6 +747,178 @@ namespace Server {
                         _physicalmemory.uuid = Guid.NewGuid();
                     }
                     Computer response = computerDAO.add((dynamic)_computer);
+                    json = JsonConvert.SerializeObject(response);
+                }
+            }
+
+            return json;
+        }
+
+        private string processSmartphoneRequest(string[] keys, string body, string method) {
+
+            SmartphoneDAO smartphoneDAO = new SmartphoneDAO();
+            string json = null;
+
+            if (method == "GET") {
+                List<KeyValuePair<string, string>> parameters = new List<KeyValuePair<string, string>>();
+                if (keys.Count() == 1) {
+                    using (var context = new DatabaseContext()) {
+                        var computers = context.computer.Include(
+                            c => c.gpus
+                        ).Include(
+                            c => c.processors
+                        ).Include(
+                            c => c.ram
+                        ).Include(
+                            c => c.motherboard
+                        ).Include(
+                            c => c.storages
+                        ).Include(
+                            c => c.operatingsystem
+                        ).Include(
+                            c => c.installedsoftwares
+                        ).ToList();
+
+                        foreach (var computer in computers) {
+                            var ram = context.ram.Where(
+                                r => r.uuid == computer.ram.uuid
+                            ).Include(r => r.physicalMemories).FirstOrDefault();
+                            var motherboard = context.motherboard.Where(
+                                m => m.uuid == computer.motherboard.uuid
+                            ).Include(m => m.superIO).FirstOrDefault();
+                            computer.ram = ram;
+                            computer.motherboard = motherboard;
+                        }
+
+                        json = JsonConvert.SerializeObject(computers);
+                    }
+                }
+                else {
+                    var rawParameters = keys[1].Split('&');
+                    foreach (string rawParameter in rawParameters) {
+                        var splits = rawParameter.Split('=');
+                        parameters.Add(new KeyValuePair<string, string>(splits[0], splits[1]));
+                    }
+
+                    if (parameters[0].Key == "uuid") {
+                        Smartphone smartphone = smartphoneDAO.getByUUID(Guid.Parse(parameters[0].Value), true);
+                        if (smartphone == null) {
+                            json = "null";
+                        }
+                        else {
+                            json = JsonConvert.SerializeObject(smartphone);
+                        }
+                    }
+                }
+            }
+            else if (method == "POST") {
+                Smartphone newSmartphone = JsonConvert.DeserializeObject<Smartphone>(body);
+                if (newSmartphone == null) {
+                    throw new Exception("Corpo da requisição nulo");
+                }
+                Smartphone smartphone = smartphoneDAO.getByUUID(newSmartphone.uuid, true);
+                if (smartphone != null) {
+                    using (var context = new DatabaseContext()) {
+                        Smartphone __smartphone = context.smartphone.Include(
+                            s => s.processor
+                        ).Include(
+                            s => s.operatingsystem
+                        ).Include(
+                            s => s.ram
+                        ).Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault();
+
+
+                        foreach (var propertyInfo in __smartphone.GetType().GetProperties()) {
+                            if (propertyInfo.Name != "id" && propertyInfo.Name != "uuid") {
+                                if (!propertyInfo.GetGetMethod().IsVirtual) {
+                                    var newValue = newSmartphone.GetType().GetProperty(propertyInfo.Name).GetValue(newSmartphone);
+                                    propertyInfo.SetValue(__smartphone, newValue);
+                                }
+                            }
+                        }
+
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().ram.total = newSmartphone.ram.total;
+                        context.smartphone.Where(
+                            c => c.uuid == newSmartphone.uuid
+                        ).FirstOrDefault().ram.update = DateTime.Now;
+
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().processor.name = newSmartphone.processor.name;
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().processor.architecture = newSmartphone.processor.architecture;
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().processor.clock = newSmartphone.processor.clock;
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().processor.cores = newSmartphone.processor.cores;
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().processor.manufacturer = newSmartphone.processor.manufacturer;
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().processor.temperature = newSmartphone.processor.temperature;
+                        context.smartphoneprocessor.Where(
+                            s => s.uuid == smartphone.processor.uuid
+                        ).FirstOrDefault().update = DateTime.Now;
+
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().operatingsystem.name = newSmartphone.operatingsystem.name;
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().operatingsystem.sdkVersion = newSmartphone.operatingsystem.sdkVersion;
+                        context.smartphone.Where(
+                            s => s.uuid == smartphone.uuid
+                        ).FirstOrDefault().operatingsystem.version = newSmartphone.operatingsystem.version;
+                        context.smartphoneos.Where(
+                            s => s.uuid == smartphone.operatingsystem.uuid
+                        ).FirstOrDefault().update = DateTime.Now;
+
+
+                        object processorReadings = new {
+                            uuid = newSmartphone.processor.uuid,
+                            readings = newSmartphone.processor.sensors
+                        };
+                        object ramReadings = new {
+                            uuid = newSmartphone.ram.uuid,
+                            readings = newSmartphone.ram.sensors
+                        };
+                        stopwatch.Start();
+                        if (((dynamic)ramReadings).readings != null) {
+                            ResourceMonitorLib.models.smartphone.SPReadings readings = new ResourceMonitorLib.models.smartphone.SPReadings() {
+                                smartphone = context.smartphone.Where(s => s.uuid == smartphone.uuid).FirstOrDefault(),
+                                date = DateTime.Now,
+                                processor = JsonConvert.SerializeObject(processorReadings),
+                                ram = JsonConvert.SerializeObject(ramReadings),
+                            };
+
+                            context.smartphonereadings.Add(readings);
+
+                            context.SaveChanges();
+                        }
+                        stopwatch.Stop();
+                        //Debug.WriteLine(((double)stopwatch.ElapsedTicks).ToString() + " ticks");
+                        stopwatch.Reset();
+                    }
+
+                    Smartphone _smartphone = smartphoneDAO.getByUUID(smartphone.uuid, true);
+
+                    json = JsonConvert.SerializeObject(_smartphone);
+                }
+                else {
+                    Smartphone _smartphone = newSmartphone;
+                    _smartphone.uuid = Guid.NewGuid();
+                    _smartphone.operatingsystem.uuid = Guid.NewGuid();
+                    _smartphone.processor.uuid = Guid.NewGuid();
+                    _smartphone.ram.uuid = Guid.NewGuid();
+                    Smartphone response = smartphoneDAO.add((dynamic)_smartphone);
                     json = JsonConvert.SerializeObject(response);
                 }
             }
