@@ -1,4 +1,4 @@
-﻿using ResourceMonitor.utils;
+﻿using ResourceMonitorLib.utils;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;

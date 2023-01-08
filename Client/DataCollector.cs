@@ -38,8 +38,6 @@ namespace ResourceMonitor.Client {
         public bool initialized = false;
 
         public DataCollector() {
-            MessageBox.Show("hello");
-
             this.isRunning = false;
             this.jsonData = string.Empty;
 
@@ -62,6 +60,7 @@ namespace ResourceMonitor.Client {
 
 
             this.computer = new Computer();
+            this.computer.operatingsystem = new ResourceMonitorLib.models.OperatingSystem();
 
             try {
                 this.nvidiaGpus = PhysicalGPU.GetPhysicalGPUs();
@@ -74,7 +73,7 @@ namespace ResourceMonitor.Client {
 
             initNvmlv2();
             if (nvmlV2Error) {
-                //initNvmlv1();
+                initNvmlv1();
             }
         }
 
@@ -104,14 +103,6 @@ namespace ResourceMonitor.Client {
             threads.Add("ComputerThread", new Thread(new ThreadStart(ComputerThreadCallback)));
             threads.Add("OperatingSystemThread", new Thread(new ThreadStart(OperatingSystemThreadCallback)));
 
-            foreach (var thread in threads) {
-                thread.Value.Start();
-            }
-
-            foreach (var thread in threads) {
-                thread.Value.Join();
-            }
-
             initialized = true;
         }
 
@@ -125,6 +116,14 @@ namespace ResourceMonitor.Client {
             }
 
             Console.WriteLine("Criando arquivo para teste dos dispositivos de armazenamento");*/
+
+            foreach (var thread in threads) {
+                thread.Value.Start();
+            }
+
+            foreach (var thread in threads) {
+                thread.Value.Join();
+            }
 
             Process diskSpd = new Process();
             diskSpd.StartInfo.UseShellExecute = false;
@@ -142,7 +141,7 @@ namespace ResourceMonitor.Client {
                 if (!logicDisk.IsReady) {
                     continue;
                 }
-                diskSpd.StartInfo.Arguments = "-b1M -d1 -o8 -t1 -W0 -S -w0 -c16M " + logicDisk.Name + "file16m.dat";
+                diskSpd.StartInfo.Arguments = "-b1M -d2 -o8 -t1 -W0 -S -w0 -c16M " + logicDisk.Name + "file16m.dat";
                 diskSpd.Start();
                 string line;
                 string readInfo = "";
@@ -165,7 +164,7 @@ namespace ResourceMonitor.Client {
                 }
                 diskSpd.WaitForExit();
 
-                diskSpd.StartInfo.Arguments = "-b1M -d1 -o8 -t1 -W0 -S -w100 -c16M " + logicDisk.Name + "file256m.dat";
+                diskSpd.StartInfo.Arguments = "-b1M -d2 -o8 -t1 -W0 -S -w100 -c16M " + logicDisk.Name + "file16m.dat";
                 diskSpd.Start();
                 string writeInfo = "";
                 flag = false;
@@ -347,7 +346,10 @@ namespace ResourceMonitor.Client {
                 AsyncCallback asyncCallback = new AsyncCallback(ComputerDataLoader);
                 context = asyncCallback.BeginInvoke(null, ComputerDataLoader, null);
                 context.AsyncWaitHandle.WaitOne();*/
-
+                if (computer == null) {
+                    computer = new Computer();
+                    computer.operatingsystem = new ResourceMonitorLib.models.OperatingSystem();
+                }
                 computer.name = Environment.MachineName;
                 computer.status = true;
 
@@ -379,6 +381,9 @@ namespace ResourceMonitor.Client {
 
                 this.jsonData = JsonConvert.SerializeObject(Config.computer);
 
+                var pcCategories = PerformanceCounterCategory.GetCategories();
+                // implement solution to invalid index exception
+                // LODCTR /r
                 var physicalDiskPCC = new PerformanceCounterCategory("PhysicalDisk");
                 var instanceNames = new List<string>();
                 foreach (var instanceName in physicalDiskPCC.GetInstanceNames()) {
@@ -456,6 +461,9 @@ namespace ResourceMonitor.Client {
             var regKey = Registry.LocalMachine.OpenSubKey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
 
             if (regKey != null) id = regKey.GetValue("DigitalProductId") as byte[];
+            if (id == null) {
+                return "";
+            }
 
             //first byte offset
             const int start = 52;

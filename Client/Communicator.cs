@@ -43,7 +43,9 @@ namespace ResourceMonitor.Client {
             //MessageBox.Show("INICIAR");
 
             if (File.Exists(Environment.MachineName + ".config")) {
-                Computer localhost = JsonConvert.DeserializeObject<Computer>(File.ReadAllText(Environment.MachineName + ".config"));
+                string fileName = Environment.MachineName + ".config";
+                string fileContent = File.ReadAllText(fileName);
+                Computer localhost = JsonConvert.DeserializeObject<Computer>(fileContent);
                 if (localhost == null || localhost.name != Environment.MachineName) {
                     File.Delete(Environment.MachineName + ".config");
                     FirstRequestCallback();

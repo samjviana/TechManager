@@ -1,5 +1,5 @@
 ﻿
-namespace Server {
+namespace ResourceMonitorServer {
     partial class MainForm {
         /// <summary>
         /// Variável de designer necessária.

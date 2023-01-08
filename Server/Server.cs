@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using ResourceMonitor.utils;
 using ResourceMonitorAPI.dao;
 using ResourceMonitorLib.models;
 using ResourceMonitorLib.utils;
@@ -21,9 +20,11 @@ using System.ComponentModel;
 using System.Web;
 using System.Security.Cryptography;
 using System.Reflection;
+using ResourceMonitorServer.utils;
+using System.Globalization;
 
-namespace Server {
-    class Server {
+namespace ResourceMonitorServer.instance {
+    public class Server {
         private HttpListener listener;
         private Thread listenerThread;
         private MainForm form;
@@ -44,11 +45,26 @@ namespace Server {
             }
         }
 
+        public Server() {
+            statusTimer.Interval = 60000;
+            statusTimer.Tick += StatusTimer_Tick;
+
+            File.WriteAllText("C:\\log.txt", "Instancia Criada\n");
+            try {
+                this.listener = new HttpListener();
+                this.listener.IgnoreWriteExceptions = true;
+            }
+            catch (Exception ex) {
+                File.AppendAllLines("C:\\log.txt", new string[] { "Exceção Ocorrida", ex.Message, ex.StackTrace });
+                this.listener = null;
+            }
+        }
+
         private void StatusTimer_Tick(object sender, EventArgs e) {
             using (var context = new DatabaseContext()) {
                 string query;
                 query = "SELECT * FROM resourcemonitor.computer WHERE \"update\" < ";
-                query += string.Format("'{0}'", DateTime.Now.AddMinutes(-30).ToString("MM-dd-yyyy HH:mm"));
+                query += string.Format("'{0}'", DateTime.Now.AddMinutes(-30).ToString("dd-MM-yyyy HH:mm"));
                 var computers = context.computer.SqlQuery(query).ToList();
                 foreach (var computer in computers) {
                     context.computer.Where(c => c.uuid == computer.uuid).FirstOrDefault().status = false;
@@ -60,7 +76,9 @@ namespace Server {
         }
 
         public Boolean Start() {
+            File.AppendAllText("C:\\log.txt", "Iniciando Servidor\n");
             if (PlatformNotSupported()) {
+                File.AppendAllText("C:\\log.txt", "Plataforma não Suportada\n");
                 return false;
             }
 
@@ -72,7 +90,7 @@ namespace Server {
                 using (var context = new DatabaseContext()) {
                     string query;
                     query = "SELECT * FROM resourcemonitor.computer WHERE \"update\" < ";
-                    query += string.Format("'{0}'", DateTime.Now.AddMinutes(-30).ToString("MM-dd-yyyy HH:mm"));
+                    query += string.Format("'{0}'", DateTime.Now.AddMinutes(-30).ToString("dd-MM-yyyy HH:mm"));
                     var computers = context.computer.SqlQuery(query).ToList();
                     foreach (var computer in computers) {
                         context.computer.Where(c => c.uuid == computer.uuid).FirstOrDefault().status = false;
@@ -95,6 +113,7 @@ namespace Server {
                 }
             }
             catch (Exception ex) {
+                File.AppendAllLines("C:\\log.txt", new string[] { "Exceção Ocorrida\n", ex.Message });
                 return false;
             }
             return true;
@@ -125,7 +144,13 @@ namespace Server {
 
         private void HandleRequests() {
             while (this.listener.IsListening) {
-                this.form.print("Listening");
+                if (form != null) {
+                    this.form.print("Listening");
+                }
+                else {
+                    Console.WriteLine("Listening");
+                }
+                File.WriteAllText("C:\\log.txt", "Listening");
 
                 IAsyncResult context;
                 context = this.listener.BeginGetContext(new AsyncCallback(ListenerCallback), this.listener);
@@ -150,7 +175,7 @@ namespace Server {
             HttpListenerRequest httpRequest = httpContext.Request;
             string requestString = httpRequest.RawUrl.Substring(1);
 
-            //Debug.WriteLine(requestString);
+            Debug.WriteLine(requestString);
             //this.form.append(requestString + Environment.NewLine);
 
             if (requestString.Contains(DatabaseWrapper.Tables.COMPUTER)) {
@@ -354,15 +379,32 @@ namespace Server {
 
                             if (parameters.Count > 1 && parameters[1].Key == "start") {
                                 List<Readings> readingsList = new List<Readings>();
+                                DateTime start = DateTime.ParseExact(parameters[1].Value, "dd-MM-yyyy HH:mm:ss", CultureInfo.InvariantCulture);
+                                DateTime end = DateTime.ParseExact(parameters[2].Value, "dd-MM-yyyy HH:mm:ss", CultureInfo.InvariantCulture);
                                 using (var context = new DatabaseContext()) {
+                                    var today = DateTime.Now;
+                                    var firstDay = new DateTime(today.Year, today.Month, 1, 0, 0, 1);
+                                    var lastDay = firstDay.AddMonths(1).AddDays(-1);
                                     var query = string.Format(
-                                        "SELECT * FROM resourcemonitor.readings WHERE computer_id = {0} AND date BETWEEN {1} AND {2}",
+                                        "SELECT * FROM resourcemonitor.readings WHERE computer_id = {0} AND readings.\"date\" > {1} AND readings.\"date\" < {2}",
                                         computer.id,
-                                        string.Format("'{0}'", DateTime.Now.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:ss.FF")),
-                                        string.Format("'{0}'", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.FF"))
+                                        string.Format("'{0}'", start.ToString("yyyy-MM-dd HH:mm:ss")),
+                                        string.Format("'{0}'", end.ToString("yyyy-MM-dd HH:mm:ss"))
                                     );
                                     readingsList = context.readings.SqlQuery(query).ToList();
-                                    json = JsonConvert.SerializeObject(readingsList);
+
+                                    List<Readings> listToSend = new List<Readings>();
+                                    int skip = 0;
+                                    for (int i = 0; i < readingsList.Count; i++) {
+                                        if (skip == 0) {
+                                            listToSend.Add(readingsList[i]);
+                                        }
+                                        skip++;
+                                        if (skip >= 0) {
+                                            skip = 0;
+                                        }
+                                    }
+                                    json = JsonConvert.SerializeObject(listToSend);
                                 }
                             }
                             else {
@@ -375,22 +417,28 @@ namespace Server {
                                     readings = context.readings.SqlQuery(query).FirstOrDefault();
                                 }
                                 if (readings != null) {
-                                    if (keys[2] == "ram") {
-                                        json = JsonConvert.SerializeObject(readings.ram);
-                                    }
-                                    else if (keys[2] == "cpu") {
-                                        var processorsReadings = JsonConvert.DeserializeObject<List<Object>>(readings.processors);
-                                        json = JsonConvert.SerializeObject(processorsReadings[Int32.Parse(keys[3])]);
-                                    }
-                                    else if (keys[2] == "gpu") {
-                                        var gpusReadings = JsonConvert.DeserializeObject<List<Object>>(readings.gpus);
-                                        json = JsonConvert.SerializeObject(gpusReadings[Int32.Parse(keys[3])]);
-                                    }
-                                    else if (keys[2] == "hdd") {
-                                        json = JsonConvert.SerializeObject(readings.storages);
+                                    if (keys.Length > 2) {
+                                        if (keys[2] == "ram") {
+                                            json = JsonConvert.SerializeObject(readings.ram);
+                                        }
+                                        else if (keys[2] == "cpu") {
+                                            var processorsReadings = JsonConvert.DeserializeObject<List<Object>>(readings.processors);
+                                            json = JsonConvert.SerializeObject(processorsReadings[Int32.Parse(keys[3])]);
+                                        }
+                                        else if (keys[2] == "gpu") {
+                                            var gpusReadings = JsonConvert.DeserializeObject<List<Object>>(readings.gpus);
+                                            json = JsonConvert.SerializeObject(gpusReadings[Int32.Parse(keys[3])]);
+                                        }
+                                        else if (keys[2] == "hdd") {
+                                            json = JsonConvert.SerializeObject(readings.storages);
+                                        }
+                                        else {
+                                            json = "null";
+                                        }
                                     }
                                     else {
-                                        json = "null";
+                                        readings.computer = computer;
+                                        json = JsonConvert.SerializeObject(readings);
                                     }
                                 }
                                 else {
@@ -701,6 +749,7 @@ namespace Server {
                                 ram = JsonConvert.SerializeObject(ramReadings),
                                 storages = JsonConvert.SerializeObject(storageReadings),
                             };
+                            readings.date.AddMilliseconds(-(readings.date.Millisecond));
 
                             context.readings.Add(readings);
 

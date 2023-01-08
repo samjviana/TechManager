@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
-using ResourceMonitor.utils;
 using ResourceMonitorLib.models;
 using ResourceMonitorLib.utils;
+using ResourceMonitorServer.utils;
 
 namespace ResourceMonitorAPI.dao {
     class ComputerDAO : DAO<Computer> {

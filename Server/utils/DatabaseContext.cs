@@ -9,8 +9,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ResourceMonitorLib.utils {
-    class DatabaseContext : DbContext {
+namespace ResourceMonitorServer.utils {
+    public class DatabaseContext : DbContext {
         public DbSet<Computer> computer { get; set; }
         public DbSet<Processor> processor { get; set; }
         public DbSet<Storage> storage { get; set; }
@@ -21,13 +21,13 @@ namespace ResourceMonitorLib.utils {
         public DbSet<SuperIO> superio { get; set; }
         public DbSet<Readings> readings { get; set; }
         public DbSet<User> user { get; set; }
-        public DbSet<models.OperatingSystem> operatingsystem { get; set; }
+        public DbSet<ResourceMonitorLib.models.OperatingSystem> operatingsystem { get; set; }
         public DbSet<InstalledSoftware> installedsoftware { get; set; }
         public DbSet<Smartphone> smartphone { get; set; }
-        public DbSet<models.smartphone.SPProcessor> smartphoneprocessor { get; set; }
-        public DbSet<models.smartphone.SPRAM> smartphoneram { get; set; }
-        public DbSet<models.smartphone.SPOperatingSystem> smartphoneos { get; set; }
-        public DbSet<models.smartphone.SPReadings> smartphonereadings { get; set; }
+        public DbSet<ResourceMonitorLib.models.smartphone.SPProcessor> smartphoneprocessor { get; set; }
+        public DbSet<ResourceMonitorLib.models.smartphone.SPRAM> smartphoneram { get; set; }
+        public DbSet<ResourceMonitorLib.models.smartphone.SPOperatingSystem> smartphoneos { get; set; }
+        public DbSet<ResourceMonitorLib.models.smartphone.SPReadings> smartphonereadings { get; set; }
         
         public DatabaseContext() : base("TechManagerDB") {
             Database.SetInitializer<DatabaseContext>(new CreateDatabaseIfNotExists<DatabaseContext>());

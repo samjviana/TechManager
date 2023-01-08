@@ -4,6 +4,7 @@ using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
 using System.Linq;
 using ResourceMonitorLib.utils;
+using ResourceMonitorServer.utils;
 
 namespace ResourceMonitorAPI.dao {
     abstract class DAO<T> where T : class {

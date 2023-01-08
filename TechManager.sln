@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31205.134
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31808.319
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{E0B01E72-D4C8-4E67-9508-2AA8ADDB4EC2}"
 EndProject
@@ -13,6 +13,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csp
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenHardwareMonitorLib", "OpenHardwareMonitorLib\OpenHardwareMonitorLib.csproj", "{B0397530-545A-471D-BB74-027AE456DF1A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TMServerService", "ServerService\TMServerService.csproj", "{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{96B8FC6A-6E64-4780-BE04-E6B953199AA7} = {96B8FC6A-6E64-4780-BE04-E6B953199AA7}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -72,6 +77,18 @@ Global
 		{B0397530-545A-471D-BB74-027AE456DF1A}.Release|x64.Build.0 = Release|x64
 		{B0397530-545A-471D-BB74-027AE456DF1A}.Release|x86.ActiveCfg = Release|x86
 		{B0397530-545A-471D-BB74-027AE456DF1A}.Release|x86.Build.0 = Release|x86
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Debug|x64.Build.0 = Debug|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Debug|x86.Build.0 = Debug|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Release|x64.ActiveCfg = Release|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Release|x64.Build.0 = Release|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Release|x86.ActiveCfg = Release|Any CPU
+		{AD5321FB-8FF4-41CF-BE3E-65635F48FEFE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -7,8 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ResourceMonitorServer.instance;
 
-namespace Server {
+namespace ResourceMonitorServer {
     public partial class MainForm : Form {
         Server server;
 
@@ -17,7 +18,7 @@ namespace Server {
         }
 
         private void MainForm_Shown(object sender, EventArgs e) {
-            server = new Server(this);
+            server = new Server(null);
             server.Start();
         }
 

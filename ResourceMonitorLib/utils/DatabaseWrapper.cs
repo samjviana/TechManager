@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ResourceMonitor.utils {
+namespace ResourceMonitorLib.utils {
     public class DatabaseWrapper {
         public static class Tables {
             public const string COMPUTER = "computer";
